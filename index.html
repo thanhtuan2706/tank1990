@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tank 1990</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+/* Layout: one centred column. Lobby card first; in a match the HUD sits above a grey NES-style frame holding the 13x13 battlefield, with touch pad below. */
+:root {
+  --ground: #0e0e13;
+  --panel: #1a1a22;
+  --line: #34343f;
+  --text: #ece8dc;
+  --muted: #a3a1b0;
+  --p1: #f2c230;
+  --p2: #5cc247;
+  --brick: #b8482a;
+  --frame: #636363;
+  --font-px: 'Press Start 2P', ui-monospace, Menlo, monospace;
+  --font-body: 'VT323', ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { min-height: 100%; }
+body {
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 21px;
+  line-height: 1.25;
+  padding-block: 20px 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+h1 { font: 400 22px/1.3 var(--font-px); margin: 0; letter-spacing: .05em; color: var(--p1); text-shadow: 3px 3px 0 #6b3a00; }
+.sub { color: var(--muted); margin: 6px 0 0; }
+h2 { font: 400 26px/1.1 var(--font-body); margin: 0 0 8px; letter-spacing: .04em; text-transform: uppercase; color: var(--p1); }
+.card { background: var(--panel); border: 2px solid var(--line); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.card p { margin: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+.muted { color: var(--muted); }
+.btn {
+  font: 400 22px/1 var(--font-body); letter-spacing: .04em; text-transform: uppercase;
+  padding: 10px 16px; border: 0; cursor: pointer; color: #1a1200; background: var(--p1);
+  box-shadow: inset -3px -3px 0 #a47a00, inset 3px 3px 0 #ffe27a;
+}
+.btn.alt { background: #3a3a48; color: var(--text); box-shadow: inset -3px -3px 0 #22222c, inset 3px 3px 0 #58586e; }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible, input:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+input#code {
+  font: 400 16px/1 var(--font-px); text-transform: uppercase; letter-spacing: .12em;
+  width: 9ch; min-width: 0; padding: 10px 12px; background: #000; color: var(--p2); border: 2px solid var(--line);
+}
+hr { border: 0; border-top: 2px dashed var(--line); margin: 0; width: 100%; }
+.legend { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; color: var(--muted); }
+.legend b { color: var(--text); font-weight: 400; }
+#lobbyMsg { min-height: 1.25em; color: #ff8a6a; }
+
+.hud { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pl { background: var(--panel); border: 2px solid var(--line); border-top: 4px solid var(--c); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pl .nm { font: 400 11px/1.4 var(--font-px); color: var(--c); }
+.pl .nm span { font-family: var(--font-body); font-size: 19px; color: var(--text); margin-left: 4px; }
+.pips { display: flex; gap: 4px; min-height: 12px; }
+.pip { width: 12px; height: 12px; background: var(--c); }
+.pip.off { background: transparent; outline: 2px solid var(--c); outline-offset: -2px; opacity: .4; }
+.kl { color: var(--muted); }
+.kl b { color: var(--text); font-weight: 400; }
+
+.stage { background: var(--frame); padding: 8px; width: min(100%, 72svh); margin: 0 auto; position: relative; box-shadow: 0 0 0 2px #000; }
+.stage canvas { display: block; width: 100%; aspect-ratio: 1; background: #000; image-rendering: pixelated; image-rendering: crisp-edges; }
+.ov { position: absolute; inset: 8px; background: rgba(0,0,0,.78); display: flex; align-items: center; justify-content: center; padding: 12px; text-align: center; }
+.ovbox { display: flex; flex-direction: column; gap: 10px; align-items: center; max-width: 100%; }
+.ovT { font: 400 34px/1.05 var(--font-body); text-transform: uppercase; letter-spacing: .04em; text-wrap: balance; }
+.ovS { color: var(--muted); text-wrap: balance; }
+.ovCode { font: 400 22px/1 var(--font-px); color: var(--p2); letter-spacing: .15em; padding: 8px 10px; border: 2px dashed var(--line); }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; width: min(100%, 72svh); margin: 0 auto; }
+.bar .btn { font-size: 19px; padding: 8px 12px; }
+#roomInfo { color: var(--muted); }
+#roomInfo b { font: 400 12px var(--font-px); color: var(--p2); letter-spacing: .1em; margin-left: 4px; }
+.hint { color: var(--muted); text-align: center; width: min(100%, 72svh); margin: 0 auto; }
+.pad { display: none; justify-content: space-between; align-items: center; gap: 16px; width: min(100%, 72svh); margin: 0 auto; user-select: none; -webkit-user-select: none; }
+@media (pointer: coarse) { .pad { display: flex; } .hint { display: none; } }
+.dpad { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 56px); gap: 4px; }
+.dpad button, .fire { touch-action: none; border: 0; background: #3a3a48; color: var(--text); font: 400 24px/1 var(--font-body); box-shadow: inset -3px -3px 0 #22222c, inset 3px 3px 0 #58586e; }
+.dpad button:active, .dpad button.on, .fire:active, .fire.on { background: var(--p1); color: #1a1200; }
+.fire { width: 96px; height: 96px; border-radius: 50%; font-size: 26px; }
+@media (prefers-reduced-motion: reduce) { .btn:active { transform: none; } }
+html, body { margin: 0; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>TANK 1990</h1>
+    <p class="sub">Bắn tăng kiểu Battle City cho hai người, chơi qua mạng giữa hai máy.</p>
+  </header>
+
+  <section id="lobby" class="card">
+    <h2>Chơi qua mạng</h2>
+    <p>Một người bấm Tạo phòng rồi đọc mã cho người kia. Người kia mở cùng trang này trên máy của mình, nhập mã và bấm Vào phòng. Người vào trước là P1 (vàng, đáy bản đồ), người vào sau là P2 (xanh, đỉnh bản đồ).</p>
+    <div class="row">
+      <button class="btn" id="btnCreate" type="button">Tạo phòng mới</button>
+      <input id="code" type="text" inputmode="text" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="MÃ" aria-label="Mã phòng">
+      <button class="btn alt" id="btnJoin" type="button">Vào phòng</button>
+    </div>
+    <p id="lobbyMsg" role="status" aria-live="polite"></p>
+    <hr>
+    <div class="row">
+      <button class="btn alt" id="btnBot" type="button">Chơi thử với máy</button>
+    </div>
+    <p class="muted">Hai máy nối trực tiếp với nhau, không cần tài khoản. Nếu không nối được, thử cho cả hai máy dùng chung một mạng wifi.</p>
+    <div class="legend">
+      <b>Di chuyển</b><span>Phím mũi tên hoặc W A S D</span>
+      <b>Bắn</b><span>Space, J hoặc Z</span>
+      <b>Tắt tiếng</b><span>Phím M</span>
+      <b>Thắng</b><span>Phá đại bàng của đối thủ, hoặc hạ đối thủ 3 lần</span>
+    </div>
+  </section>
+
+  <section id="game" hidden>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="hud">
+        <div class="pl" id="hud0" style="--c:var(--p1)"><div class="nm">P1<span></span></div><div class="pips"></div><div class="kl">Đã hạ: <b>0</b></div></div>
+        <div class="pl" id="hud1" style="--c:var(--p2)"><div class="nm">P2<span></span></div><div class="pips"></div><div class="kl">Đã hạ: <b>0</b></div></div>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="cv" width="208" height="208" aria-label="Chiến trường"></canvas>
+        <div class="ov" id="ov" hidden>
+          <div class="ovbox">
+            <div class="ovT" id="ovT"></div>
+            <div class="ovCode" id="ovCode" hidden></div>
+            <div class="ovS" id="ovS"></div>
+            <button class="btn" id="ovB" type="button" hidden></button>
+          </div>
+        </div>
+      </div>
+      <div class="bar">
+        <div id="roomInfo"></div>
+        <div class="row">
+          <button class="btn alt" id="btnCopy" type="button" hidden>Chép link mời</button>
+          <button class="btn alt" id="btnExit" type="button">Thoát</button>
+        </div>
+      </div>
+      <p id="diag" style="color:var(--muted);text-align:center;font-size:17px;margin:0"></p>
+      <div class="pad" id="pad">
+        <div class="dpad">
+          <span></span><button type="button" data-d="0" aria-label="Lên">&#9650;</button><span></span>
+          <button type="button" data-d="3" aria-label="Trái">&#9664;</button><span></span><button type="button" data-d="1" aria-label="Phải">&#9654;</button>
+          <span></span><button type="button" data-d="2" aria-label="Xuống">&#9660;</button><span></span>
+        </div>
+        <button class="fire" id="fireBtn" type="button">BẮN</button>
+      </div>
+      <p class="hint">Di chuyển: mũi tên hoặc W A S D. Bắn: Space hoặc J. Tắt tiếng: M.</p>    </div>
+  </section>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>window.Peer || document.write('<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"><\/script>');</script>
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const W = 208, S = 8, N = 26, TS = 16, LIVES = 3, BSPD = 130, TSPD = 52;
+  const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
+  const SLOT = [{ n: 'P1', c: '#f2c230', d: '#9a6a00' }, { n: 'P2', c: '#5cc247', d: '#1f6a16' }];
+  const SPAWN = [[64, 192, 0], [128, 0, 2]];
+
+  /* ---------- terrain: 13x13 tiles, each 2x2 cells of 8px; rotated 180 degrees for fairness ---------- */
+  const TOP = [
+    '.....BEB.....',
+    '.....BBB.....',
+    '.B.S.B.B.S.B.',
+    '.BB..W.W..BB.',
+    '.....S.S.....',
+    'SS..B...B..SS',
+    '..W.BB.BB.W..'
+  ];
+  const full = [];
+  for (let r = 0; r < 13; r++) {
+    full.push([]);
+    for (let c = 0; c < 13; c++) full[r].push(r <= 6 ? TOP[r][c] : full[12 - r][12 - c]);
+  }
+  const terr = new Uint8Array(N * N); // 0 empty, 1 brick, 2 steel, 3 water, 4 base of P1, 5 base of P2
+  for (let r = 0; r < 13; r++) for (let c = 0; c < 13; c++) {
+    const ch = full[r][c];
+    const v = ch === 'B' ? 1 : ch === 'S' ? 2 : ch === 'W' ? 3 : ch === 'E' ? (r === 12 ? 4 : 5) : 0;
+    for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) terr[(r * 2 + dy) * N + c * 2 + dx] = v;
+  }
+  const dead = new Uint8Array(N * N);
+  const solidAt = (i) => { const v = terr[i]; return v === 1 ? !dead[i] : v !== 0; };
+
+  /* ---------- tile sprites ---------- */
+  function mk(w, h, fn) { const c = document.createElement('canvas'); c.width = w; c.height = h; fn(c.getContext('2d')); return c; }
+  const brickT = mk(8, 8, (g) => {
+    g.fillStyle = '#b8482a'; g.fillRect(0, 0, 8, 8);
+    g.fillStyle = '#3a1608'; g.fillRect(0, 3, 8, 1); g.fillRect(0, 7, 8, 1); g.fillRect(3, 0, 1, 3); g.fillRect(7, 4, 1, 3);
+    g.fillStyle = '#d9703e'; g.fillRect(0, 0, 3, 1); g.fillRect(4, 4, 3, 1);
+  });
+  const steelT = mk(8, 8, (g) => {
+    g.fillStyle = '#c8c8c8'; g.fillRect(0, 0, 8, 8);
+    g.fillStyle = '#f4f4f4'; g.fillRect(0, 0, 8, 1); g.fillRect(0, 0, 1, 8);
+    g.fillStyle = '#6a6a6a'; g.fillRect(0, 7, 8, 1); g.fillRect(7, 0, 1, 8);
+    g.fillStyle = '#9c9c9c'; g.fillRect(2, 2, 4, 4);
+  });
+  const waterT = [0, 1].map((f) => mk(8, 8, (g) => {
+    g.fillStyle = '#2442d4'; g.fillRect(0, 0, 8, 8);
+    g.fillStyle = '#7f98ff';
+    for (let y = 1; y < 8; y += 3) for (let x = (y + f * 2) % 4; x < 8; x += 4) g.fillRect(x, y, 2, 1);
+  }));
+
+  /* ---------- state ---------- */
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const st = { mode: 'lobby', ms: -1, fs: -1, round: 1, over: false, winner: -1, reason: '', waiting: false, joining: false };
+  const me = { x: 0, y: 0, dir: 0, mv: false, state: 2, shield: 0, deadT: 0, bullet: null, bid: 0, frame: 0, af: 0 };
+  const foe = { x: 0, y: 0, dir: 0, mv: false, state: 0, bullet: null, frame: 0, af: 0 };
+  const bot = { x: 128, y: 0, dir: 2, state: 2, shield: 2, mv: false, bullet: null, t: 0, fireT: 1.2, deadT: 0, frame: 0, af: 0 };
+  let kills = [0, 0], mybm = 0, foeBm = 0, lastFoeK = 0, foeSeen = false, foeBsStr = '';
+  let foeBu = null, foeBid = -1;
+  const explosions = [];
+  const dirty = { k: 0, bm: 0, bs: 0, st: 0, b: 0 };
+  let room = null, token = 0, pacc = 0, lastPos = '', lastSt = -1, myCode = '', connectedOk = true;
+
+  const bmAll = () => mybm | foeBm;
+
+  /* ---------- audio ---------- */
+  let ac = null, muted = false;
+  function initAudio() { if (ac) return; try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } }
+  function tone(f0, f1, dur, type, vol) {
+    if (!ac || muted) return;
+    try {
+      const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) { /* audio is optional */ }
+  }
+  function noise(dur, vol) {
+    if (!ac || muted) return;
+    try {
+      const n = Math.floor(ac.sampleRate * dur), buf = ac.createBuffer(1, n, ac.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      const s = ac.createBufferSource(), g = ac.createGain();
+      s.buffer = buf; g.gain.value = vol; s.connect(g); g.connect(ac.destination); s.start();
+    } catch (e) { /* audio is optional */ }
+  }
+  const sfxShoot = (v) => tone(900, 380, 0.08, 'square', v || 0.05);
+  const sfxTick = () => tone(160, 90, 0.05, 'square', 0.04);
+  const sfxBoom = () => noise(0.35, 0.18);
+
+  /* ---------- helpers ---------- */
+  function boom(x, y, big) { explosions.push({ x, y, t: 0, d: big ? 0.55 : 0.2, big }); if (big) sfxBoom(); }
+  function tankBlocked(x, y, others) {
+    const sx0 = Math.floor(x / S), sx1 = Math.floor((x + TS - 0.01) / S), sy0 = Math.floor(y / S), sy1 = Math.floor((y + TS - 0.01) / S);
+    for (let sy = sy0; sy <= sy1; sy++) for (let sx = sx0; sx <= sx1; sx++) if (solidAt(sy * N + sx)) return true;
+    for (const o of others) if (x < o.x + TS - 1 && x + TS - 1 > o.x && y < o.y + TS - 1 && y + TS - 1 > o.y) return true;
+    return false;
+  }
+  function tryMove(t, d, dt, others) {
+    if (t.dir !== d) {
+      if ((t.dir % 2) !== (d % 2)) {
+        let sx = t.x, sy = t.y;
+        if (d % 2 === 0) sx = Math.round(t.x / S) * S; else sy = Math.round(t.y / S) * S;
+        if (!tankBlocked(sx, sy, others)) { t.x = sx; t.y = sy; }
+      }
+      t.dir = d;
+    }
+    if (dt <= 0) return false;
+    const sp = TSPD * dt;
+    const nx = Math.min(W - TS, Math.max(0, t.x + DX[d] * sp)), ny = Math.min(W - TS, Math.max(0, t.y + DY[d] * sp));
+    if (nx === t.x && ny === t.y) return false;
+    if (tankBlocked(nx, ny, others)) return false;
+    t.x = nx; t.y = ny; return true;
+  }
+  function killBrick(i, dir) {
+    dead[i] = 1;
+    const sy = Math.floor(i / N), sx = i % N;
+    const j = (dir % 2 === 0) ? sy * N + (sx ^ 1) : (sy ^ 1) * N + sx;
+    if (terr[j] === 1) dead[j] = 1;
+    dirty.bs = 1; sfxTick();
+  }
+  function destroyBase(s) {
+    mybm |= (1 << s); dirty.bm = 1;
+    const bx = 96 + 8, by = (s === 0 ? 192 : 0) + 8;
+    boom(bx, by, true);
+  }
+  function bulletWorld(b) {
+    const x0 = b.x - 2, y0 = b.y - 2, x1 = b.x + 2, y1 = b.y + 2;
+    if (x0 < 0 || y0 < 0 || x1 > W || y1 > W) { boom(Math.min(W, Math.max(0, b.x)), Math.min(W, Math.max(0, b.y)), false); return true; }
+    let hit = false; const bricks = [];
+    for (let sy = Math.floor(y0 / S); sy <= Math.floor((y1 - 0.01) / S); sy++)
+      for (let sx = Math.floor(x0 / S); sx <= Math.floor((x1 - 0.01) / S); sx++) {
+        const i = sy * N + sx, v = terr[i];
+        if (v === 0 || v === 3) continue;
+        if (v === 1) { if (!dead[i]) bricks.push(i); }
+        else if (v === 2) hit = true;
+        else { const s = v - 4; if (!(bmAll() & (1 << s))) destroyBase(s); hit = true; }
+      }
+    if (bricks.length) { for (const i of bricks) killBrick(i, b.dir); hit = true; }
+    if (hit) boom(b.x, b.y, false);
+    return hit;
+  }
+  const bulletHitsTank = (b, tx, ty) => b.x + 2 > tx + 1 && b.x - 2 < tx + TS - 1 && b.y + 2 > ty + 1 && b.y - 2 < ty + TS - 1;
+  const foeRects = () => (foe.state > 0 ? [{ x: foe.x, y: foe.y }] : []);
+
+  /* ---------- input ---------- */
+  const dirStack = []; let fireHeld = false, touchDir = -1, touchFire = false;
+  const keyDir = { ArrowUp: 0, KeyW: 0, ArrowRight: 1, KeyD: 1, ArrowDown: 2, KeyS: 2, ArrowLeft: 3, KeyA: 3 };
+  const fireKeys = { Space: 1, KeyJ: 1, KeyZ: 1, KeyX: 1 };
+  window.addEventListener('keydown', (e) => {
+    if (st.mode === 'lobby') return;
+    const tg = e.target && e.target.tagName;
+    if (tg === 'INPUT') return;
+    if (e.code in keyDir) {
+      const d = keyDir[e.code], i = dirStack.indexOf(d);
+      if (i >= 0) dirStack.splice(i, 1);
+      dirStack.push(d); e.preventDefault();
+    } else if (e.code in fireKeys) {
+      if (tg === 'BUTTON') return;
+      fireHeld = true; initAudio(); e.preventDefault();
+    } else if (e.code === 'KeyM') { muted = !muted; if (!muted) initAudio(); }
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.code in keyDir) { const i = dirStack.indexOf(keyDir[e.code]); if (i >= 0) dirStack.splice(i, 1); }
+    else if (e.code in fireKeys) fireHeld = false;
+  });
+  window.addEventListener('blur', () => { dirStack.length = 0; fireHeld = false; touchDir = -1; touchFire = false; });
+  document.querySelectorAll('.dpad button').forEach((b) => {
+    const d = Number(b.dataset.d);
+    const on = (e) => { e.preventDefault(); touchDir = d; b.classList.add('on'); initAudio(); };
+    const off = () => { if (touchDir === d) touchDir = -1; b.classList.remove('on'); };
+    b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('pointerleave', off);
+  });
+  const fb = $('fireBtn');
+  fb.addEventListener('pointerdown', (e) => { e.preventDefault(); touchFire = true; fb.classList.add('on'); initAudio(); });
+  const fOff = () => { touchFire = false; fb.classList.remove('on'); };
+  fb.addEventListener('pointerup', fOff); fb.addEventListener('pointercancel', fOff); fb.addEventListener('pointerleave', fOff);
+  const wantDir = () => (touchDir >= 0 ? touchDir : dirStack.length ? dirStack[dirStack.length - 1] : -1);
+  const wantFire = () => fireHeld || touchFire;
+
+  /* ---------- my tank ---------- */
+  function respawnMe() {
+    const sp = SPAWN[Math.max(0, st.ms)];
+    me.x = sp[0]; me.y = sp[1]; me.dir = sp[2]; me.state = 2; me.shield = 2.5; me.deadT = 0; me.bullet = null; me.mv = false;
+    dirty.st = 1; dirty.b = 1; lastPos = '';
+  }
+  function killMe() {
+    if (me.state === 0) return;
+    me.state = 0; me.deadT = 1.0; me.bullet = null; boom(me.x + 8, me.y + 8, true);
+    dirty.st = 1; dirty.b = 1;
+  }
+  function fireMe() {
+    const cx = me.x + 8, cy = me.y + 8;
+    me.bullet = { x: cx + DX[me.dir] * 8, y: cy + DY[me.dir] * 8, dir: me.dir, id: ++me.bid };
+    sfxShoot(0.06); pacc = 1;
+  }
+  function hitFoe() {
+    kills[st.ms]++; dirty.k = 1;
+    boom(foe.x + 8, foe.y + 8, true);
+    if (st.mode === 'bot') { bot.state = 0; bot.deadT = 1.2; bot.bullet = null; }
+  }
+  function advanceMyBullet(dt) {
+    const b = me.bullet; let dist = BSPD * dt;
+    while (dist > 0 && me.bullet) {
+      const stp = Math.min(1, dist); dist -= stp;
+      b.x += DX[b.dir] * stp; b.y += DY[b.dir] * stp;
+      if (bulletWorld(b)) { me.bullet = null; dirty.b = 1; break; }
+      if (foe.state === 1 && bulletHitsTank(b, foe.x, foe.y)) { hitFoe(); me.bullet = null; dirty.b = 1; break; }
+    }
+  }
+  function updateMe(dt) {
+    if (me.state === 0) {
+      me.deadT -= dt;
+      if (me.deadT <= 0 && LIVES - kills[st.fs] > 0) respawnMe();
+      return;
+    }
+    if (me.shield > 0) { me.shield -= dt; if (me.shield <= 0) { me.shield = 0; me.state = 1; dirty.st = 1; } }
+    const d = wantDir();
+    me.mv = d >= 0 ? tryMove(me, d, dt, foeRects()) : false;
+    if (wantFire() && !me.bullet) fireMe();
+    if (me.bullet) advanceMyBullet(dt);
+    if (me.mv) { me.af += dt; if (me.af > 0.08) { me.af = 0; me.frame ^= 1; } }
+  }
+
+  /* ---------- bot (practice mode) ---------- */
+  function botReset() { Object.assign(bot, { x: 128, y: 0, dir: 2, state: 2, shield: 2, deadT: 0, bullet: null, t: 0, fireT: 1.2, mv: false }); }
+  function botPick() {
+    const dx = me.x - bot.x, dy = me.y - bot.y, r = Math.random();
+    let d;
+    if (r < 0.45) d = Math.abs(dy) > Math.abs(dx) ? (dy > 0 ? 2 : 0) : (dx > 0 ? 1 : 3);
+    else if (r < 0.7) d = 2;
+    else d = Math.floor(Math.random() * 4);
+    tryMove(bot, d, 0, [{ x: me.x, y: me.y }]);
+    bot.t = 0.4 + Math.random() * 1.2;
+  }
+  function botFire() {
+    bot.bullet = { x: bot.x + 8 + DX[bot.dir] * 8, y: bot.y + 8 + DY[bot.dir] * 8, dir: bot.dir };
+    if (me.state > 0) sfxShoot(0.03);
+  }
+  function botUpdate(dt) {
+    if (bot.deadT > 0) { bot.deadT -= dt; if (bot.deadT <= 0) botReset(); return; }
+    if (bot.shield > 0) { bot.shield -= dt; if (bot.shield <= 0) bot.state = 1; }
+    bot.t -= dt;
+    const moved = tryMove(bot, bot.dir, dt, me.state > 0 ? [{ x: me.x, y: me.y }] : []);
+    if (!moved || bot.t <= 0) botPick();
+    bot.mv = moved;
+    if (moved) { bot.af += dt; if (bot.af > 0.08) { bot.af = 0; bot.frame ^= 1; } }
+    bot.fireT -= dt;
+    if (!bot.bullet) {
+      const dx = me.x - bot.x, dy = me.y - bot.y;
+      const aligned = me.state > 0 && ((bot.dir % 2 === 0 && Math.abs(dx) < 12 && (bot.dir === 0 ? dy < 0 : dy > 0)) || (bot.dir % 2 === 1 && Math.abs(dy) < 12 && (bot.dir === 1 ? dx > 0 : dx < 0)));
+      if (bot.fireT <= 0 || (aligned && bot.fireT < 0.9)) { botFire(); bot.fireT = 0.6 + Math.random() * 1.1; }
+    }
+    if (bot.bullet) {
+      const b = bot.bullet; let dist = BSPD * 0.8 * dt;
+      while (dist > 0 && bot.bullet) {
+        const stp = Math.min(1, dist); dist -= stp;
+        b.x += DX[b.dir] * stp; b.y += DY[b.dir] * stp;
+        if (bulletWorld(b)) { bot.bullet = null; break; }
+        if (me.state === 1 && bulletHitsTank(b, me.x, me.y)) { kills[st.fs]++; killMe(); bot.bullet = null; break; }
+      }
+    }
+    foe.x = bot.x; foe.y = bot.y; foe.dir = bot.dir; foe.state = bot.state; foe.mv = bot.mv; foe.frame = bot.frame; foe.bullet = bot.bullet;
+  }
+
+  /* ---------- network ---------- */
+  const enc = () => {
+    const by = new Uint8Array(85);
+    for (let i = 0; i < N * N; i++) if (dead[i]) by[i >> 3] |= 1 << (i & 7);
+    let s = ''; for (const v of by) s += String.fromCharCode(v);
+    return btoa(s);
+  };
+  const dec = (str) => {
+    let s; try { s = atob(str); } catch (e) { return; }
+    for (let i = 0; i < N * N; i++) if (((s.charCodeAt(i >> 3) || 0) >> (i & 7)) & 1 && terr[i] === 1) dead[i] = 1;
+  };
+  let roomErr = '', sendErr = '', lastDiag = 0;
+  let peer = null, conn = null, localP = {}, remoteP = null, isHost = false;
+  const send = (patch) => {
+    if (!room) return;
+    try { room.presence(Object.assign({ c: myCode.toLowerCase() }, patch)); } catch (e) { sendErr = 'throw'; }
+  };
+  function diag(ts) {
+    if (ts - lastDiag < 400) return;
+    lastDiag = ts;
+    $('diag').textContent = (conn && conn.open ? 'Đã nối với đối thủ' : (st.joining ? 'Đang kết nối…' : 'Chưa có đối thủ')) + (roomErr ? ' · lỗi ' + roomErr : '');
+  }
+  function fullPatch() {
+    return { p: 1, s: st.ms + 1, r: st.round, x: Math.round(me.x), y: Math.round(me.y), d: me.dir, m: 0, st: me.state, k: kills[st.ms] | 0, bm: mybm, bs: enc(), b: null };
+  }
+  function netTick(dt) {
+    if (!room || st.ms < 0) return;
+    const patch = {}; let any = false;
+    pacc += dt;
+    if (pacc >= 0.05) {
+      pacc = 0;
+      const x = Math.round(me.x), y = Math.round(me.y), key = x + '|' + y + '|' + me.dir + '|' + (me.mv ? 1 : 0);
+      if (key !== lastPos) { lastPos = key; patch.x = x; patch.y = y; patch.d = me.dir; patch.m = me.mv ? 1 : 0; any = true; }
+      if (me.bullet) { patch.b = [Math.round(me.bullet.x), Math.round(me.bullet.y), me.bullet.dir, me.bullet.id]; dirty.b = 0; any = true; }
+    }
+    if (dirty.b && !me.bullet) { patch.b = null; dirty.b = 0; any = true; }
+    if (dirty.st || me.state !== lastSt) { patch.st = me.state; lastSt = me.state; dirty.st = 0; any = true; }
+    if (dirty.k) { patch.k = kills[st.ms]; dirty.k = 0; any = true; }
+    if (dirty.bm) { patch.bm = mybm; dirty.bm = 0; any = true; }
+    if (dirty.bs) { patch.bs = enc(); dirty.bs = 0; any = true; }
+    if (any) send(patch);
+  }
+  function pickSlot() {
+    const taken = {};
+    for (const p of room.peers()) if (!p.sameTab && p.kind === 'viewer') { const s = p.presence.s; if (s === 1 || s === 2) taken[s] = 1; }
+    return !taken[1] ? 1 : !taken[2] ? 2 : 0;
+  }
+  function takeSlot(s) {
+    st.ms = s - 1; st.fs = 2 - s;
+    respawnMe();
+    send(fullPatch());
+  }
+  function repick() {
+    const my = token;
+    st.ms = -1; st.joining = true; send({ s: 0 });
+    setTimeout(() => {
+      if (my !== token || !room) return;
+      const s = pickSlot();
+      if (!s) return leaveToLobby('Phòng đã đủ hai người chơi. Hãy thử mã phòng khác.');
+      takeSlot(s); st.joining = false;
+    }, 300 + Math.random() * 300);
+  }
+  function syncOnline(dt) {
+    if (!room || st.ms < 0) return;
+    let mine = null; const others = [];
+    for (const p of room.peers()) { if (p.sameTab) mine = p; else if (p.kind === 'viewer' && p.presence.p) others.push(p); }
+    let fp = null;
+    for (const p of others) {
+      const s = p.presence.s;
+      if (s === st.fs + 1) fp = p;
+      if (s === st.ms + 1 && mine && p.peer < mine.peer) { repick(); return; }
+    }
+    for (const p of others) { const r = p.presence.r | 0; if (r > st.round) { resetRound(r); break; } }
+    if (!fp) { foeSeen = false; st.waiting = true; foe.state = 0; foe.bullet = null; return; }
+    const pr = fp.presence;
+    if ((pr.r | 0) !== st.round) { st.waiting = true; return; }
+    st.waiting = false;
+    const tx = pr.x == null ? foe.x : pr.x, ty = pr.y == null ? foe.y : pr.y;
+    if (!foeSeen) { foeSeen = true; lastFoeK = pr.k | 0; foe.x = tx; foe.y = ty; }
+    const k = Math.min(1, dt * 18);
+    foe.x += (tx - foe.x) * k; foe.y += (ty - foe.y) * k;
+    foe.dir = pr.d | 0; foe.mv = !!pr.m; foe.state = pr.st == null ? 1 : pr.st;
+    if (foe.mv) { foe.af += dt; if (foe.af > 0.08) { foe.af = 0; foe.frame ^= 1; } }
+    const b = pr.b;
+    if (b) {
+      if (!foeBu || foeBu.id !== b[3] || foeBu.x0 !== b[0] || foeBu.y0 !== b[1]) {
+        if (!foeBu || foeBu.id !== b[3]) { if (b[3] !== foeBid) { foeBid = b[3]; sfxShoot(0.03); } }
+        foeBu = { x0: b[0], y0: b[1], dir: b[2], id: b[3], t: performance.now() };
+      }
+      const el = Math.min(0.12, (performance.now() - foeBu.t) / 1000);
+      foe.bullet = { x: foeBu.x0 + DX[foeBu.dir] * BSPD * el, y: foeBu.y0 + DY[foeBu.dir] * BSPD * el, dir: foeBu.dir };
+    } else { foeBu = null; foe.bullet = null; }
+    kills[st.fs] = pr.k | 0;
+    if (kills[st.fs] > lastFoeK) { lastFoeK = kills[st.fs]; killMe(); }
+    foeBm = pr.bm | 0;
+    if (typeof pr.bs === 'string' && pr.bs !== foeBsStr) { foeBsStr = pr.bs; if (pr.bs) dec(pr.bs); }
+  }
+
+  /* ---------- rounds and match flow ---------- */
+  function resetRound(r) {
+    st.round = r; st.over = false; st.winner = -1; st.reason = '';
+    dead.fill(0); kills = [0, 0]; mybm = 0; foeBm = 0; foeBsStr = ''; lastFoeK = 0; foeBu = null;
+    explosions.length = 0; foe.bullet = null;
+    if (st.ms >= 0) respawnMe();
+    if (st.mode === 'bot') botReset();
+    if (st.mode === 'online' && st.ms >= 0) send(fullPatch());
+  }
+  function checkOver() {
+    if (st.over) return;
+    const bm = bmAll(); let w = -1, why = '';
+    if (bm & 1) { w = 1; why = 'Đại bàng của P1 đã bị phá.'; }
+    else if (bm & 2) { w = 0; why = 'Đại bàng của P2 đã bị phá.'; }
+    else if (kills[0] >= LIVES) { w = 0; why = 'P2 đã hết mạng.'; }
+    else if (kills[1] >= LIVES) { w = 1; why = 'P1 đã hết mạng.'; }
+    if (w >= 0) { st.over = true; st.winner = w; st.reason = why; }
+  }
+  function initMatch() {
+    dead.fill(0); kills = [0, 0]; mybm = 0; foeBm = 0; foeBsStr = ''; lastFoeK = 0; foeSeen = false; foeBu = null; foeBid = -1;
+    explosions.length = 0; foe.state = 0; foe.bullet = null; me.bullet = null;
+    st.round = 1; st.over = false; st.winner = -1; st.waiting = false; st.joining = false;
+    lastPos = ''; lastSt = -1; pacc = 0; ovKey = '';
+    dirStack.length = 0; fireHeld = false;
+  }
+  function showGame() { $('lobby').hidden = true; $('game').hidden = false; }
+  function leaveToLobby(msg) {
+    token++;
+    if (room) { try { room.leave(); } catch (e) { /* ignore */ } room = null; }
+    st.mode = 'lobby'; st.ms = -1; st.fs = -1; st.joining = false;
+    $('game').hidden = true; $('lobby').hidden = false; ovKey = ''; ovHide();
+    $('lobbyMsg').textContent = msg || '';
+  }
+  function startBot() {
+    initAudio(); token++;
+    initMatch(); st.mode = 'bot'; st.ms = 0; st.fs = 1;
+    botReset(); respawnMe(); showGame();
+    $('roomInfo').textContent = 'Đấu với máy'; $('btnCopy').hidden = true;
+  }
+  const PREFIX = 'tank1990-';
+  const applyPatch = (o, patch) => { for (const k in patch) { if (patch[k] === null) delete o[k]; else o[k] = patch[k]; } };
+  function mkRoom() {
+    return {
+      peers: () => {
+        const a = [{ peer: 'me', sameTab: true, isMe: true, kind: 'viewer', presence: localP }];
+        if (remoteP) a.push({ peer: 'other', sameTab: false, isMe: false, kind: 'viewer', presence: remoteP });
+        return a;
+      },
+      presence: (patch) => {
+        applyPatch(localP, patch);
+        if (conn && conn.open) { try { conn.send({ t: 'p', patch }); } catch (e) { sendErr = 'send'; } }
+        return Promise.resolve();
+      },
+      leave: () => {
+        try { if (conn) conn.close(); } catch (e) { /* ignore */ }
+        try { if (peer) peer.destroy(); } catch (e) { /* ignore */ }
+        peer = null; conn = null; remoteP = null; localP = {};
+        return Promise.resolve();
+      }
+    };
+  }
+  function attach(c, my) {
+    conn = c;
+    c.on('open', () => {
+      if (my !== token) return;
+      roomErr = '';
+      try { c.send({ t: 'p', patch: Object.assign({}, localP) }); } catch (e) { /* ignore */ }
+      if (!isHost) { takeSlot(2); st.joining = false; }
+    });
+    c.on('data', (m) => {
+      if (my !== token || !m) return;
+      if (m.t === 'p' && m.patch) { if (!remoteP) remoteP = {}; applyPatch(remoteP, m.patch); }
+      else if (m.t === 'full') leaveToLobby('Phòng ' + myCode + ' đã đủ hai người chơi.');
+    });
+    c.on('close', () => {
+      if (conn !== c) return;
+      conn = null; remoteP = null;
+      if (my === token && !isHost) leaveToLobby('Mất kết nối với chủ phòng.');
+    });
+    c.on('error', () => { /* the close event follows */ });
+  }
+  function startOnline(code, host) {
+    initAudio();
+    const my = ++token;
+    initMatch(); st.mode = 'online'; st.ms = -1; st.fs = -1; st.joining = true; myCode = code; isHost = host;
+    roomErr = ''; sendErr = ''; localP = {}; remoteP = null; conn = null;
+    showGame();
+    $('roomInfo').innerHTML = 'Phòng <b></b>'; $('roomInfo').querySelector('b').textContent = code; $('btnCopy').hidden = false;
+    const fail = (m) => { if (my === token) leaveToLobby(m); };
+    const PeerCtor = window.Peer || (window.peerjs && window.peerjs.Peer);
+    if (!PeerCtor) return fail('Không tải được thư viện kết nối. Kiểm tra mạng rồi thử lại.');
+    room = mkRoom();
+    const id = PREFIX + code.toLowerCase();
+    try { peer = host ? new PeerCtor(id) : new PeerCtor(); } catch (e) { return fail('Không khởi tạo được kết nối.'); }
+    const myPeer = peer;
+    myPeer.on('error', (e) => {
+      if (my !== token) return;
+      const t = e && e.type;
+      if (t === 'unavailable-id') return fail('Mã phòng ' + code + ' đang có người dùng. Hãy tạo phòng với mã khác.');
+      if (t === 'peer-unavailable') return fail('Không tìm thấy phòng ' + code + '. Kiểm tra lại mã, hoặc nhờ người kia tạo phòng trước.');
+      roomErr = t || 'error';
+      if (st.joining) fail('Không kết nối được máy chủ báo danh (' + roomErr + '). Kiểm tra mạng rồi thử lại.');
+    });
+    myPeer.on('disconnected', () => { try { myPeer.reconnect(); } catch (e) { /* ignore */ } });
+    if (host) {
+      myPeer.on('open', () => { if (my !== token) return; takeSlot(1); st.joining = false; });
+      myPeer.on('connection', (c) => {
+        if (my !== token) return;
+        if (conn && conn.open) {
+          c.on('open', () => { try { c.send({ t: 'full' }); } catch (e) { /* ignore */ } setTimeout(() => { try { c.close(); } catch (e) { /* ignore */ } }, 300); });
+          return;
+        }
+        attach(c, my);
+      });
+    } else {
+      myPeer.on('open', () => {
+        if (my !== token) return;
+        const c = myPeer.connect(id, { reliable: true, serialization: 'json' });
+        attach(c, my);
+        setTimeout(() => { if (my === token && st.joining) fail('Không nối được tới phòng ' + code + '. Thử cho hai máy dùng chung wifi, hoặc tạo phòng lại.'); }, 15000);
+      });
+    }
+  }
+
+  /* ---------- overlay and HUD ---------- */
+  let ovKey = '';
+  function ovShow(t, s, code, btn, fn) {
+    $('ov').hidden = false; $('ovT').textContent = t; $('ovS').textContent = s;
+    const c = $('ovCode'); c.hidden = !code; c.textContent = code || '';
+    const b = $('ovB'); b.hidden = !btn; if (btn) { b.textContent = btn; b.onclick = () => { b.blur(); fn(); }; }
+  }
+  function ovHide() { $('ov').hidden = true; }
+  function refreshOverlay() {
+    let key = '';
+    if (st.over) key = 'over' + st.winner + '|' + st.ms;
+    else if (st.mode === 'online' && (st.joining || st.ms < 0)) key = 'join';
+    else if (st.mode === 'online' && st.waiting) key = 'wait';
+    if (key === ovKey) return;
+    ovKey = key;
+    if (!key) return ovHide();
+    if (key === 'join') return ovShow('Đang kết nối', 'Đang tìm người chơi trong phòng…', '', '', null);
+    if (key === 'wait') return ovShow('Chờ đối thủ', 'Người kia mở cùng link này, nhập mã phòng rồi bấm Vào phòng, hoặc mở link mời có kèm mã.', myCode, '', null);
+    const w = st.winner;
+    const title = st.mode === 'bot' ? (w === 0 ? 'Bạn thắng!' : 'Máy thắng') : (w === st.ms ? 'Bạn thắng!' : 'Bạn thua');
+    ovShow(title, st.reason, '', 'Chơi lại', () => resetRound(st.round + 1));
+  }
+  const hudCache = ['', ''];
+  function hud() {
+    for (let i = 0; i < 2; i++) {
+      const lives = Math.max(0, LIVES - kills[1 - i]), key = lives + '|' + kills[i] + '|' + st.ms + '|' + st.mode;
+      if (hudCache[i] === key) continue;
+      hudCache[i] = key;
+      const el = $('hud' + i);
+      el.querySelector('.nm span').textContent = i === st.ms ? '· BẠN' : (st.mode === 'bot' ? '· MÁY' : '');
+      let pips = ''; for (let k = 0; k < LIVES; k++) pips += '<i class="pip' + (k < lives ? '' : ' off') + '"></i>';
+      el.querySelector('.pips').innerHTML = pips;
+      el.querySelector('.kl b').textContent = kills[i];
+    }
+  }
+
+  /* ---------- drawing ---------- */
+  function drawTank(x, y, dir, col, dk, mv, fr) {
+    ctx.save();
+    ctx.translate(Math.round(x) + 8, Math.round(y) + 8); ctx.rotate(dir * Math.PI / 2); ctx.translate(-8, -8);
+    ctx.fillStyle = dk; ctx.fillRect(0, 1, 4, 14); ctx.fillRect(12, 1, 4, 14);
+    ctx.fillStyle = col;
+    for (let i = 0; i < 7; i++) { const yy = 1 + ((i * 2 + (mv ? fr : 0)) % 14); ctx.fillRect(0, yy, 4, 1); ctx.fillRect(12, yy, 4, 1); }
+    ctx.fillRect(4, 3, 8, 11);
+    ctx.fillStyle = dk; ctx.fillRect(5, 12, 6, 2); ctx.fillRect(6, 6, 4, 5);
+    ctx.fillStyle = col; ctx.fillRect(7, 7, 2, 3);
+    ctx.fillRect(7, 0, 2, 7); ctx.fillStyle = dk; ctx.fillRect(7, 0, 2, 1);
+    ctx.restore();
+  }
+  function drawBase(x, y, alive) {
+    if (alive) {
+      ctx.fillStyle = '#d8d8d8'; ctx.fillRect(x + 6, y + 3, 4, 9); ctx.fillRect(x + 2, y + 5, 4, 5); ctx.fillRect(x + 10, y + 5, 4, 5);
+      ctx.fillStyle = '#8a8a8a'; ctx.fillRect(x + 7, y + 1, 2, 3); ctx.fillRect(x + 1, y + 10, 3, 2); ctx.fillRect(x + 12, y + 10, 3, 2);
+      ctx.fillStyle = '#e0b020'; ctx.fillRect(x + 7, y + 12, 2, 3);
+    } else {
+      ctx.fillStyle = '#3a3a3a'; ctx.fillRect(x + 2, y + 9, 12, 5);
+      ctx.fillStyle = '#777'; ctx.fillRect(x + 4, y + 7, 3, 3); ctx.fillRect(x + 9, y + 8, 3, 2);
+      ctx.fillStyle = '#b03020'; ctx.fillRect(x + 7, y + 4, 1, 6); ctx.fillRect(x + 8, y + 4, 4, 2);
+    }
+  }
+  function render(ts) {
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, W);
+    const wf = Math.floor(ts / 500) % 2;
+    for (let sy = 0; sy < N; sy++) for (let sx = 0; sx < N; sx++) {
+      const i = sy * N + sx, v = terr[i];
+      if (v === 1) { if (!dead[i]) ctx.drawImage(brickT, sx * S, sy * S); }
+      else if (v === 2) ctx.drawImage(steelT, sx * S, sy * S);
+      else if (v === 3) ctx.drawImage(waterT[wf], sx * S, sy * S);
+    }
+    const bm = bmAll();
+    drawBase(96, 192, !(bm & 1)); drawBase(96, 0, !(bm & 2));
+    const blink = Math.floor(ts / 90) % 2;
+    const drawOne = (t, slot, shielded, isMe) => {
+      if (t.state === 0) return;
+      drawTank(t.x, t.y, t.dir, SLOT[slot].c, SLOT[slot].d, t.mv, t.frame);
+      if (shielded) {
+        ctx.strokeStyle = blink ? '#ffffff' : '#7fd0ff'; ctx.lineWidth = 1;
+        ctx.strokeRect(Math.round(t.x) - 0.5, Math.round(t.y) - 0.5, TS + 1, TS + 1);
+        if (isMe) { ctx.fillStyle = '#fff'; const mx = Math.round(t.x) + 8, my = Math.round(t.y) - 5; ctx.fillRect(mx - 2, my, 5, 1); ctx.fillRect(mx - 1, my + 1, 3, 1); ctx.fillRect(mx, my + 2, 1, 1); }
+      }
+    };
+    if (st.ms >= 0) drawOne(me, st.ms, me.state === 2, true);
+    if (st.fs >= 0) drawOne(foe, st.fs, foe.state === 2, false);
+    const drawBullet = (b) => { if (!b) return; ctx.fillStyle = '#e8e8e8'; ctx.fillRect(Math.round(b.x) - 2, Math.round(b.y) - 2, 4, 4); ctx.fillStyle = '#8c8c8c'; ctx.fillRect(Math.round(b.x) - 1, Math.round(b.y) - 1, 2, 2); };
+    drawBullet(me.bullet); drawBullet(foe.bullet);
+    for (const e of explosions) {
+      const f = e.t / e.d, r = Math.max(2, Math.round((e.big ? 13 : 5) * (0.35 + 0.65 * f)));
+      ctx.fillStyle = f < 0.35 ? '#fff6b0' : f < 0.7 ? '#f2a020' : '#c03010';
+      ctx.fillRect(Math.round(e.x) - r, Math.round(e.y) - (r >> 1), r * 2, r);
+      ctx.fillRect(Math.round(e.x) - (r >> 1), Math.round(e.y) - r, r, r * 2);
+    }
+  }
+
+  /* ---------- main loop ---------- */
+  let last = 0;
+  function loop(ts) {
+    const dt = Math.min(0.05, Math.max(0, (ts - last) / 1000)); last = ts;
+    if (st.mode !== 'lobby') {
+      if (st.mode === 'bot') { if (!st.over) botUpdate(dt); } else syncOnline(dt);
+      for (let i = explosions.length - 1; i >= 0; i--) { explosions[i].t += dt; if (explosions[i].t > explosions[i].d) explosions.splice(i, 1); }
+      checkOver();
+      const frozen = st.over || st.joining || st.ms < 0 || (st.mode === 'online' && st.waiting);
+      if (!frozen) updateMe(dt);
+      if (st.mode === 'online') netTick(dt);
+      hud(); refreshOverlay(); render(ts);
+      if (st.mode === 'online' && !connectedOk && !st.over) $('roomInfo').firstChild.textContent = 'Mất kết nối, đang thử lại. Phòng ';
+      else if (st.mode === 'online') $('roomInfo').firstChild.textContent = 'Phòng ';
+      if (st.mode === 'online') diag(ts); else if ($('diag').textContent) $('diag').textContent = '';
+    }
+    requestAnimationFrame(loop);
+  }
+
+  /* ---------- lobby wiring ---------- */
+  const clean = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  const rand = () => { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 5; i++) s += a[Math.floor(Math.random() * a.length)]; return s; };
+  $('btnCreate').onclick = () => { const c = rand(); $('code').value = c; $('lobbyMsg').textContent = ''; startOnline(c, true); };
+  $('btnJoin').onclick = () => {
+    const c = clean($('code').value);
+    if (c.length < 4) { $('lobbyMsg').textContent = 'Nhập mã phòng từ 4 đến 6 ký tự.'; return; }
+    $('lobbyMsg').textContent = ''; startOnline(c, false);
+  };
+  $('code').addEventListener('input', (e) => { e.target.value = clean(e.target.value); });
+  $('code').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnJoin').click(); });
+  $('btnBot').onclick = () => { $('lobbyMsg').textContent = ''; startBot(); };
+  $('btnExit').onclick = () => { $('btnExit').blur(); leaveToLobby(''); };
+  $('btnCopy').onclick = () => {
+    const b = $('btnCopy'); b.blur();
+    const link = location.href.split('#')[0] + '#' + myCode;
+    const done = () => { b.textContent = 'Đã chép'; setTimeout(() => { b.textContent = 'Chép link mời'; }, 1500); };
+    try { navigator.clipboard.writeText(link).then(done, () => { b.textContent = myCode; }); } catch (e) { b.textContent = myCode; }
+  };
+  try { const m = /^#([A-Za-z0-9]{3,6})$/.exec(location.hash); if (m) { $('code').value = m[1].toUpperCase(); $('lobbyMsg').textContent = 'Đã điền mã phòng từ link mời. Bấm Vào phòng để chơi.'; } } catch (e) { /* ignore */ }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
